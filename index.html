@@ -56,6 +56,13 @@
 <style>
   /* ── The established Squnchies palette (unchanged) ────────────────────── */
   :root {
+    /* Snapchat draws its own controls over the Lens and reports the space
+       they need here. The top inset is much larger than a notch, and there
+       is no fixed value to design against — never clamp these to a guess. */
+    --inset-top:    env(safe-area-inset-top, 0px);
+    --inset-right:  env(safe-area-inset-right, 0px);
+    --inset-bottom: env(safe-area-inset-bottom, 0px);
+    --inset-left:   env(safe-area-inset-left, 0px);
     --dusk:        #271B47;
     --night:       #120C28;
     --cream:       #FAF4EA;
@@ -85,7 +92,8 @@
     height: 100%; overflow: hidden; background: #000;
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
     color: var(--cream);
-    touch-action: none; user-select: none; -webkit-user-select: none;
+    touch-action: none; overscroll-behavior: none;
+    user-select: none; -webkit-user-select: none;
     position: fixed; width: 100%;
   }
 
@@ -112,7 +120,7 @@
   #hud > * { pointer-events: auto; }
 
   #topbar {
-    position: absolute; top: calc(env(safe-area-inset-top, 0px) + 10px);
+    position: absolute; top: calc(var(--inset-top) + 10px);
     left: 10px; right: 10px;
     display: flex; align-items: center; gap: 8px;
     pointer-events: none;
@@ -212,7 +220,7 @@
      waves are turned back, ticked once per wave so you can see how many
      are left as well as how far through this one you are. */
   #waveReadout {
-    position: absolute; top: calc(env(safe-area-inset-top, 0px) + 48px);
+    position: absolute; top: calc(var(--inset-top) + 48px);
     left: 50%; transform: translateX(-50%);
     width: 62%; max-width: 260px;
     display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -248,7 +256,7 @@
   }
 
   #toast {
-    position: absolute; top: calc(env(safe-area-inset-top, 0px) + 100px);
+    position: absolute; top: calc(var(--inset-top) + 100px);
     left: 50%; transform: translateX(-50%);
     max-width: 84%;
     background: rgba(18,12,40,0.92);
@@ -270,7 +278,7 @@
     pointer-events: none;
   }
   #tutorial-card {
-    position: absolute; top: calc(env(safe-area-inset-top, 0px) + 84px);
+    position: absolute; top: calc(var(--inset-top) + 84px);
     left: 50%; width: min(92%, 350px); transform: translateX(-50%);
     padding: 12px 16px 13px;
     border: 1.5px solid rgba(255,224,166,0.82); border-radius: 17px;
@@ -374,7 +382,7 @@
   }
 
   #banner {
-    position: absolute; top: calc(env(safe-area-inset-top, 0px) + 92px);
+    position: absolute; top: calc(var(--inset-top) + 92px);
     left: 50%; width: min(88%, 340px); box-sizing: border-box;
     padding: 12px 18px 13px; text-align: center;
     background: rgba(18,12,40,0.94);
@@ -468,7 +476,7 @@
      whole row to themselves and can be read at a glance. */
   #shop {
     position: absolute; left: 0; right: 0; bottom: 0;
-    padding: 5px 10px calc(env(safe-area-inset-bottom, 0px) + 10px);
+    padding: 5px 10px calc(var(--inset-bottom) + 10px);
     background: linear-gradient(to top, rgba(10,6,24,0.94) 62%, transparent);
   }
   #shop-title {
@@ -1247,12 +1255,12 @@
 </script>
 
 <!-- Three.js from the local vendor folder — no CDN, no network. -->
-<script type="importmap">
-  { "imports": { "three": "./vendor/three.module.js" } }
-</script>
-
 <script type="module">
-import * as THREE from 'three';
+// Three.js is imported by relative path rather than through an import map.
+// A Snap Web Lens serves every file under a strict CSP, so one less inline
+// <script> is one less thing that can blank the screen; the path below is
+// exactly what the map used to resolve "three" to.
+import * as THREE from './vendor/three.module.js';
 
 /* ═════════════════════════════════════════════════════════════════════════
    1. CONFIG
@@ -1845,6 +1853,11 @@ const AudioSys = (() => {
 
   return {
     init,
+    // Snapchat can send a Lens to the background without unloading it — when a
+    // Snap arrives, say. rAF stops on its own there, but WebAudio does not, so
+    // without these the ambient bed keeps playing out over the app.
+    suspend()    { if (ctx && ctx.state === 'running')   ctx.suspend(); },
+    resume()     { if (ctx && ctx.state === 'suspended') ctx.resume(); },
     plink()      { const f = 620 + Math.random() * 260; tone(f, 0.12, { vol: 0.09 }); tone(f * 1.5, 0.1, { vol: 0.05, delay: 0.03 }); },
     inkSplat()   { tone(180, 0.18, { vol: 0.14, slideTo: 70 }); noiseBurst(0.12, { vol: 0.1, freq: 300, q: 0.9 }); },
     heal()       { tone(520, 0.16, { vol: 0.07 }); tone(660, 0.2, { vol: 0.06, delay: 0.07 }); },
@@ -6952,7 +6965,12 @@ function frame(nowMs) {
   Tutorial.update();
 }
 requestAnimationFrame(frame);
-document.addEventListener('visibilitychange', () => { lastT = performance.now(); });
+document.addEventListener('visibilitychange', () => {
+  // Resetting lastT stops the first frame back from being billed for the whole
+  // absence; the loop's dt clamp would cap it anyway, but this is the honest fix.
+  lastT = performance.now();
+  if (document.hidden) AudioSys.suspend(); else AudioSys.resume();
+});
 
 // Debug/testing handle (drives headless playtests during development).
 window.__isle = {
