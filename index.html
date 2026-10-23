@@ -122,7 +122,13 @@
   #topbar {
     position: absolute; top: calc(var(--inset-top) + 10px);
     left: 10px; right: 10px;
-    display: flex; align-items: center; gap: 8px;
+    /* Everything clusters RIGHT so the top-left corner stays empty. Snapchat
+       draws its close button there, over our content, and on a device that
+       under-reports the top inset (measured on an S22 Ultra) it lands exactly
+       on the light meter. Snap's own advice is to leave their corner rather
+       than fight it, and a right-hand cluster reads as deliberate everywhere
+       else, so one layout serves both. */
+    display: flex; align-items: center; justify-content: flex-end; gap: 8px;
     pointer-events: none;
   }
   .pill {
@@ -147,7 +153,7 @@
   }
   .light-seg.low i { background: linear-gradient(90deg, var(--grape), var(--ink)); }
   .light-seg.out { border-color: rgba(110,96,143,0.3); opacity: 0.5; }
-  #sparkPill { margin-left: auto; }
+  /* margin-left:auto removed — the whole bar is right-aligned now. */
   #sparkVal { color: var(--honey-glow); }
   #pauseBtn {
     width: 34px; height: 34px; border-radius: 50%;
@@ -278,13 +284,16 @@
     pointer-events: none;
   }
   #tutorial-card {
-    position: absolute; top: calc(var(--inset-top) + 84px);
+    /* Tucked closer to the wave readout and trimmed of padding: with a large
+       inset the whole stack slides down onto the lighthouse. Font size is
+       deliberately untouched — the text was made bigger on purpose. */
+    position: absolute; top: calc(var(--inset-top) + 76px);
     left: 50%; width: min(92%, 350px); transform: translateX(-50%);
-    padding: 12px 16px 13px;
+    padding: 9px 15px 10px;
     border: 1.5px solid rgba(255,224,166,0.82); border-radius: 17px;
     background: rgba(18,12,40,0.94);
     box-shadow: 0 8px 28px rgba(6,3,18,0.42), 0 0 18px rgba(255,197,107,0.14);
-    text-align: center; font-size: 18px; line-height: 1.4;
+    text-align: center; font-size: 18px; line-height: 1.32;
   }
   #tutorial-card b { color: var(--honey-glow); font-weight: 650; }
   #tutorial-step {
@@ -604,7 +613,14 @@
   .screen {
     position: absolute; inset: 0; z-index: 10;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 24px;
+    text-align: center;
+    /* This used to be a flat `padding: 24px`, so the title screen centred in
+       the whole viewport and ignored the insets entirely — which is why Play
+       ended up underneath Snapchat's lens carousel. Respect both insets, then
+       lift the stack another 10vh: Snapchat's bottom chrome is far taller
+       than the inset it reports, and the title screen has empty room above
+       the cast to give. */
+    padding: calc(var(--inset-top) + 20px) 24px calc(var(--inset-bottom) + 20px + 10vh);
     background: radial-gradient(ellipse 120% 90% at 50% 30%, var(--dusk) 0%, var(--night) 70%);
     transition: opacity 0.6s;
   }
@@ -5551,7 +5567,19 @@ const Tutorial = {
       if (!s.behind) low = Math.max(low, s.y);
     }
     const h = app.clientHeight;
-    return THREE.MathUtils.clamp(low + pad, h * 0.5, h - 210);
+    /* The gesture is 132px of rail plus the hand below it. Clamping its TOP
+       to a magic `h - 210` let the bottom of it lie across the Upgrades
+       chips — and the chips take the touch, so the swipe the card is asking
+       for does nothing unless the player happens to start it over the isle.
+       Measure the real chip row instead, so this holds on any device and at
+       any inset rather than only the one it was tuned on. */
+    const shop = el('shop');
+    const appTop = app.getBoundingClientRect().top;
+    const floorY = shop && shop.offsetHeight
+      ? shop.getBoundingClientRect().top - appTop
+      : h - 150;
+    const highest = h * 0.42;
+    return THREE.MathUtils.clamp(low + pad, highest, Math.max(highest, floorY - 186));
   },
 
   say(label, html, target = null, toward = null, gesture = null) {
