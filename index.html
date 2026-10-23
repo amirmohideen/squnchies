@@ -63,6 +63,13 @@
     --inset-right:  env(safe-area-inset-right, 0px);
     --inset-bottom: env(safe-area-inset-bottom, 0px);
     --inset-left:   env(safe-area-inset-left, 0px);
+    /* The wave readout's band, named so the hint card can sit a stated
+       distance BELOW it. These were two unrelated magic offsets and they
+       drifted into each other: the readout ends at 48+28=76 and the card
+       started at exactly 76, so they touched. */
+    --readout-top:  48px;
+    --readout-h:    28px;   /* measured: title line + 4px gap + bar */
+    --readout-gap:  11px;
     --dusk:        #271B47;
     --night:       #120C28;
     --cream:       #FAF4EA;
@@ -226,7 +233,7 @@
      waves are turned back, ticked once per wave so you can see how many
      are left as well as how far through this one you are. */
   #waveReadout {
-    position: absolute; top: calc(var(--inset-top) + 48px);
+    position: absolute; top: calc(var(--inset-top) + var(--readout-top));
     left: 50%; transform: translateX(-50%);
     width: 62%; max-width: 260px;
     display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -287,7 +294,8 @@
     /* Tucked closer to the wave readout and trimmed of padding: with a large
        inset the whole stack slides down onto the lighthouse. Font size is
        deliberately untouched — the text was made bigger on purpose. */
-    position: absolute; top: calc(var(--inset-top) + 76px);
+    position: absolute;
+    top: calc(var(--inset-top) + var(--readout-top) + var(--readout-h) + var(--readout-gap));
     left: 50%; width: min(92%, 350px); transform: translateX(-50%);
     padding: 9px 15px 10px;
     border: 1.5px solid rgba(255,224,166,0.82); border-radius: 17px;
