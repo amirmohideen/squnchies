@@ -5456,6 +5456,20 @@ const Tutorial = {
   hurryWalk() { return this.active && (this.step === 'approach' || this.step === 'incoming2'); },
 
   // a Gloop that has actually reached the isle, so scripted damage lands
+  /* The Gloop to aim Sparky's swipe at: whichever of the three lesson
+     visitors is nearest him and still inked. Nearest rather than first so the
+     line tracks the swarm as they close in and are rescued one by one. */
+  gangEnemy() {
+    const sq = squads.find(q => q.type === 'sparky');
+    const live = (this.sparkyLessonEnemies || [])
+      .filter(e => e && !e.gone && e.corruption > 0 && e.state !== 'offmap');
+    if (!live.length) return null;
+    if (!sq || !sq.members[0]) return live[0];
+    const p = sq.members[0].group.position;
+    return live.reduce((a, b) =>
+      a.group.position.distanceTo(p) <= b.group.position.distanceTo(p) ? a : b);
+  },
+
   ashoreGloop() {
     return enemies.find(e => e.state === 'advance' && !e.gone && e.corruption > 0) || null;
   },
@@ -5938,10 +5952,13 @@ const Tutorial = {
       this.step = 'gangup';
       this.moveNode = this.helpNode();
       this.helpMoveCommitted = false;
-      this.say('Watch out', 'Three Gloops are on Sparky!');
-      this.target = () => this.squadBody('sparky');
-      this.toward = null;
-      this.showGesture(null);
+      /* A bare arrow over Sparky says "look here" but not "do what". The
+         player has been taught the swipe on Blox; reuse that exact animation
+         here, running across Sparky toward the Gloops on him, so the card and
+         the gesture ask for the same thing. */
+      this.say('Watch out', 'Three Gloops are on Sparky!',
+        () => this.squadBody('sparky'),
+        () => { const e = this.gangEnemy(); return e ? e.group : null; });
       return true;
     }
     // the last lesson: keep swiping until the three are home
@@ -5979,6 +5996,8 @@ const Tutorial = {
     if (this.step === 'upgraded') {
       this.step = 'spin';
       this.spinFrom = world.rotation.y;
+      this.spinLast = world.rotation.y;
+      this.spinTravel = 0;
       this.say('Step 9 of 13',
         '<b>Double attack!</b> Now <b>swipe sideways</b> to spin the island.',
         null, null, 'tut-spin');
@@ -6116,7 +6135,16 @@ const Tutorial = {
     } else if (this.step === 'zoomin') {
       if (camZoomTarget < this.zoomPeak * 0.88) this.onZoomedIn();
     } else if (this.step === 'spin') {
-      if (Math.abs(world.rotation.y - this.spinFrom) > 0.5) this.onSpun();
+      /* Total travel, not displacement. Net distance from the start angle
+         FALLS as the player swipes back toward it, so a swipe out and a swipe
+         home — which is plenty of spinning, and the most natural thing to do —
+         left the rail on screen demanding more, sitting over the Gloops
+         attacking Sparky. Accumulating every frame's movement means any
+         swiping counts, in either direction. */
+      const now = world.rotation.y;
+      this.spinTravel = (this.spinTravel || 0) + Math.abs(now - (this.spinLast ?? now));
+      this.spinLast = now;
+      if (this.spinTravel > 0.5) this.onSpun();
     }
   },
 
@@ -6268,9 +6296,32 @@ const Tutorial = {
     } else {
       swipe.classList.add('hidden');
       arrow.classList.remove('hidden');
-      arrow.style.left = x + 'px';
       const extraLift = this.step === 'gethelp' ? 10 : 0;
-      arrow.style.top = (y - (from.dom ? 11 : 34) - extraLift) + 'px';
+      let ax = x, ay = y - (from.dom ? 11 : 34) - extraLift;
+      /* Step 7 points at a chip on the very bottom edge of the screen, and an
+         arrow that just hovers over it gets missed: the player is still
+         looking at the isle, half a screen higher, with no reason to drop
+         their eye that far. Run the arrow DOWN from Blox's body to Blox's
+         chip on a loop so it carries the eye there, then let it rest on the
+         chip for the tail of each pass so the thing it is naming is what you
+         see at the end of the trip. */
+      if (this.step === 'upgrade') {
+        const body = this.screenPoint(() => this.bloxBody());
+        /* Only run the trip when Blox is actually on screen and above his
+           chip. If the camera has him off the bottom edge, or spun behind
+           the isle, a "travelling" arrow would crawl UPWARD from nowhere,
+           which points away from the button it is naming. Hover instead. */
+        if (body && !body.behind && body.y < ay - 40) {
+          const k = (performance.now() % 1600) / 1600;
+          const travel = Math.min(k / 0.72, 1);          // fly down, then hold
+          const ease = 1 - Math.pow(1 - travel, 3);      // ease-out, no bounce
+          const topY = body.y - 34;
+          ax = body.x + (ax - body.x) * ease;
+          ay = topY + (ay - topY) * ease;
+        }
+      }
+      arrow.style.left = ax + 'px';
+      arrow.style.top = ay + 'px';
     }
   },
 };
