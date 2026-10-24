@@ -63,17 +63,17 @@
     --inset-right:  env(safe-area-inset-right, 0px);
     --inset-bottom: env(safe-area-inset-bottom, 0px);
     --inset-left:   env(safe-area-inset-left, 0px);
-    /* The wave readout's band, named so the hint card can sit a stated
-       distance BELOW it. These were two unrelated magic offsets and they
-       drifted into each other: the readout ends at 48+28=76 and the card
-       started at exactly 76, so they touched. */
     /* Snapchat's close button sits in the TOP-LEFT corner, over our content.
        Measured on an S22 Ultra it spans roughly x 12-42, so the HUD row
        starts past it. Set this to 0px to reclaim the corner on a build
        that has nothing drawn over it. */
     --snap-corner:  48px;
-    --readout-top:  48px;
-    --readout-h:    23px;   /* measured: 11.5px title line + 3px gap + 9px bar */
+    /* The hint card clears the topbar by a stated gap. The readout used to be
+       a row of its own between them, with its offset and the card's offset as
+       two unrelated magic numbers that drifted into each other and touched;
+       now it rides inside the topbar and there is one band to clear. */
+    --topbar-top:   10px;
+    --topbar-h:     34px;   /* measured: the pause button, not the pills, sets the row height */
     --readout-gap:  11px;
     --dusk:        #271B47;
     --night:       #120C28;
@@ -132,19 +132,19 @@
   #hud > * { pointer-events: auto; }
 
   #topbar {
-    position: absolute; top: calc(var(--inset-top) + 10px);
+    position: absolute; top: calc(var(--inset-top) + var(--topbar-top));
     left: 10px; right: 10px;
     /* Left-anchored as it always was, but starting past Snapchat's close
        button rather than underneath it — reserving the corner keeps the
        light meter where it belongs instead of exiling the whole row right. */
     padding-left: var(--snap-corner);
-    display: flex; align-items: center; gap: 8px;
+    display: flex; align-items: center; gap: 7px;
     pointer-events: none;
   }
   .pill {
     background: rgba(39,27,71,0.85);
     border: 1.5px solid rgba(110,96,143,0.6);
-    border-radius: 999px; padding: 5px 12px;
+    border-radius: 999px; padding: 5px 9px;
     font-size: 15px; font-weight: 600;
     display: flex; align-items: center; gap: 7px; white-space: nowrap;
   }
@@ -152,7 +152,10 @@
   /* one segment per lighthouse on this isle */
   #lightBar { display: flex; gap: 3px; }
   .light-seg {
-    width: 30px; height: 9px; border-radius: 999px;
+    /* 30px each was fine when this pill had the row to itself. With three
+       lamps that is 102px of the middle gone, and the wave readout now needs
+       that space, so the segments are narrower and read the same. */
+    width: 19px; height: 8px; border-radius: 999px;
     background: rgba(18,12,40,0.9); overflow: hidden;
     border: 1px solid rgba(110,96,143,0.5);
   }
@@ -236,25 +239,25 @@
      waves are turned back, ticked once per wave so you can see how many
      are left as well as how far through this one you are. */
   #waveReadout {
-    position: absolute; top: calc(var(--inset-top) + var(--readout-top));
-    left: 50%; transform: translateX(-50%);
-    /* Wide enough for the longest isle line. "The Three Lanterns · three
-       lamps, one long night" measures 270px and the box was 233, so it
-       had been spilling out of both sides — nowrap meant it never wrapped,
-       it just overhung. */
-    width: 80%; max-width: 300px;
-    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    /* Lives IN the topbar row now, filling the gap between the light meter
+       and the Spark/pause cluster, so the night's progress reads on the same
+       line as everything else instead of on a row of its own. min-width:0 is
+       what lets a flex child actually shrink below its content. */
+    flex: 1 1 auto; min-width: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
     pointer-events: none;
   }
   #waveText {
-    /* line-height pinned: the font's default leading padded this line out by
-       several pixels of nothing, and every one of them pushed the hint card
-       further down the lighthouse. */
-    font-size: 11.5px; line-height: 1.1; color: var(--ink); font-weight: 500;
-    letter-spacing: 0.4px; white-space: nowrap;
+    /* Short by necessity: the middle of the row is only as wide as the pills
+       leave it, and that is tightest on the three-lamp isle. line-height is
+       pinned because the font's default leading padded the line with several
+       pixels of nothing. */
+    font-size: 11px; line-height: 1.1; color: var(--ink); font-weight: 500;
+    letter-spacing: 0.3px; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; max-width: 100%;
   }
   #waveBar {
-    position: relative; width: 100%; height: 7px; border-radius: 999px;
+    position: relative; width: 100%; height: 6px; border-radius: 999px;
     background: rgba(18,12,40,0.9);
     border: 1px solid rgba(110,96,143,0.55);
     overflow: hidden;
@@ -305,7 +308,7 @@
        inset the whole stack slides down onto the lighthouse. Font size is
        deliberately untouched — the text was made bigger on purpose. */
     position: absolute;
-    top: calc(var(--inset-top) + var(--readout-top) + var(--readout-h) + var(--readout-gap));
+    top: calc(var(--inset-top) + var(--topbar-top) + var(--topbar-h) + var(--readout-gap));
     left: 50%; width: min(92%, 350px); transform: translateX(-50%);
     padding: 9px 15px 10px;
     border: 1.5px solid rgba(255,224,166,0.82); border-radius: 17px;
@@ -861,12 +864,12 @@
   <div id="hud">
     <div id="topbar">
       <div class="pill"><span class="lamp-icon">✸</span><div id="lightBar"></div></div>
+      <div id="waveReadout">
+        <div id="waveText">Level 1</div>
+        <div id="waveBar"><div id="waveFill"></div><div id="waveTicks"></div></div>
+      </div>
       <div class="pill" id="sparkPill">⚡ <span id="sparkVal">0</span></div>
       <button id="pauseBtn" title="pause">❚❚</button>
-    </div>
-    <div id="waveReadout">
-      <div id="waveText">Calm Isle</div>
-      <div id="waveBar"><div id="waveFill"></div><div id="waveTicks"></div></div>
     </div>
 
     <div id="toast"></div>
@@ -5273,9 +5276,11 @@ const HUD = {
     // finished, so the bar creeps forward all the way through a wave instead
     // of sitting still and then jumping — you can always see you're winning.
     const wave = Math.min(S.waveIdx, WAVES.length);
-    el('waveText').textContent = S.waveIdx === 0
-      ? `${LEVEL.name} · ${LEVEL.subtitle}`
-      : `${LEVEL.name} · Wave ${wave} / ${WAVES.length}`;
+    /* The isle's full name cannot fit between the pills, and the bar's own
+       tick marks already say which wave you are on, so the label is just
+       the level number. The name and subtitle still get their moment on
+       the crossing card between isles. */
+    el('waveText').textContent = `Level ${S.campaign.level + 1}`;
     const frac = S.isleFoes ? THREE.MathUtils.clamp(S.isleFoesDone / S.isleFoes, 0, 1) : 0;
     el('waveFill').style.width = (frac * 100) + '%';
     el('waveReadout').classList.toggle('final', wave === WAVES.length && S.phase === 'play');
