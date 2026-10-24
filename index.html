@@ -67,8 +67,13 @@
        distance BELOW it. These were two unrelated magic offsets and they
        drifted into each other: the readout ends at 48+28=76 and the card
        started at exactly 76, so they touched. */
+    /* Snapchat's close button sits in the TOP-LEFT corner, over our content.
+       Measured on an S22 Ultra it spans roughly x 12-42, so the HUD row
+       starts past it. Set this to 0px to reclaim the corner on a build
+       that has nothing drawn over it. */
+    --snap-corner:  48px;
     --readout-top:  48px;
-    --readout-h:    28px;   /* measured: title line + 4px gap + bar */
+    --readout-h:    23px;   /* measured: 11.5px title line + 3px gap + 9px bar */
     --readout-gap:  11px;
     --dusk:        #271B47;
     --night:       #120C28;
@@ -129,13 +134,11 @@
   #topbar {
     position: absolute; top: calc(var(--inset-top) + 10px);
     left: 10px; right: 10px;
-    /* Everything clusters RIGHT so the top-left corner stays empty. Snapchat
-       draws its close button there, over our content, and on a device that
-       under-reports the top inset (measured on an S22 Ultra) it lands exactly
-       on the light meter. Snap's own advice is to leave their corner rather
-       than fight it, and a right-hand cluster reads as deliberate everywhere
-       else, so one layout serves both. */
-    display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+    /* Left-anchored as it always was, but starting past Snapchat's close
+       button rather than underneath it — reserving the corner keeps the
+       light meter where it belongs instead of exiling the whole row right. */
+    padding-left: var(--snap-corner);
+    display: flex; align-items: center; gap: 8px;
     pointer-events: none;
   }
   .pill {
@@ -160,7 +163,7 @@
   }
   .light-seg.low i { background: linear-gradient(90deg, var(--grape), var(--ink)); }
   .light-seg.out { border-color: rgba(110,96,143,0.3); opacity: 0.5; }
-  /* margin-left:auto removed — the whole bar is right-aligned now. */
+  #sparkPill { margin-left: auto; }
   #sparkVal { color: var(--honey-glow); }
   #pauseBtn {
     width: 34px; height: 34px; border-radius: 50%;
@@ -235,18 +238,25 @@
   #waveReadout {
     position: absolute; top: calc(var(--inset-top) + var(--readout-top));
     left: 50%; transform: translateX(-50%);
-    width: 62%; max-width: 260px;
-    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    /* Wide enough for the longest isle line. "The Three Lanterns · three
+       lamps, one long night" measures 270px and the box was 233, so it
+       had been spilling out of both sides — nowrap meant it never wrapped,
+       it just overhung. */
+    width: 80%; max-width: 300px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
     pointer-events: none;
   }
   #waveText {
-    font-size: 12px; color: var(--ink); font-weight: 500;
-    letter-spacing: 0.5px; white-space: nowrap;
+    /* line-height pinned: the font's default leading padded this line out by
+       several pixels of nothing, and every one of them pushed the hint card
+       further down the lighthouse. */
+    font-size: 11.5px; line-height: 1.1; color: var(--ink); font-weight: 500;
+    letter-spacing: 0.4px; white-space: nowrap;
   }
   #waveBar {
-    position: relative; width: 100%; height: 9px; border-radius: 999px;
+    position: relative; width: 100%; height: 7px; border-radius: 999px;
     background: rgba(18,12,40,0.9);
-    border: 1.5px solid rgba(110,96,143,0.55);
+    border: 1px solid rgba(110,96,143,0.55);
     overflow: hidden;
   }
   #waveFill {
