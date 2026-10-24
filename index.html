@@ -75,6 +75,12 @@
     --topbar-top:   10px;
     --topbar-h:     34px;   /* measured: the pause button, not the pills, sets the row height */
     --readout-gap:  11px;
+    /* The band every message opens in, just under the HUD row. The hint card,
+       the toast and the big announcement each used to carry their own offset,
+       tuned back when the wave readout had a row of its own; moving the
+       readout into the topbar left all three stranded low and apart. One
+       value now, so they stay together whatever happens above them. */
+    --hud-top: calc(var(--inset-top) + var(--topbar-top) + var(--topbar-h) + var(--readout-gap));
     --dusk:        #271B47;
     --night:       #120C28;
     --cream:       #FAF4EA;
@@ -282,7 +288,7 @@
   }
 
   #toast {
-    position: absolute; top: calc(var(--inset-top) + 100px);
+    position: absolute; top: var(--hud-top);
     left: 50%; transform: translateX(-50%);
     max-width: 84%;
     background: rgba(18,12,40,0.92);
@@ -308,7 +314,7 @@
        inset the whole stack slides down onto the lighthouse. Font size is
        deliberately untouched — the text was made bigger on purpose. */
     position: absolute;
-    top: calc(var(--inset-top) + var(--topbar-top) + var(--topbar-h) + var(--readout-gap));
+    top: var(--hud-top);
     left: 50%; width: min(92%, 350px); transform: translateX(-50%);
     padding: 9px 15px 10px;
     border: 1.5px solid rgba(255,224,166,0.82); border-radius: 17px;
@@ -412,7 +418,7 @@
   }
 
   #banner {
-    position: absolute; top: calc(var(--inset-top) + 92px);
+    position: absolute; top: var(--hud-top);
     left: 50%; width: min(88%, 340px); box-sizing: border-box;
     padding: 12px 18px 13px; text-align: center;
     background: rgba(18,12,40,0.94);
